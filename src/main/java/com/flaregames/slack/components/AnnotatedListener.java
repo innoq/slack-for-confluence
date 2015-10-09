@@ -83,7 +83,12 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
       SlackMessage message = new SlackMessage();
       message = appendPageLink(message, page);
       message = message.text(" - " + action + " by ");
-      return appendPersonalSpaceUrl(message, user);
+      message = appendPersonalSpaceUrl(message, user);
+      if (page.isVersionCommentAvailable())
+	  message = message.text(" - Change comment: \"" + page.getVersionComment() + "\" - ");
+      if (action.equals("page updated")) // I'll burn in hell for this
+	  message = appendDiffUrl(message, page);
+      return message;
    }
 
    private void sendMessage(String channel, SlackMessage message) {
@@ -97,12 +102,23 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
       }
    }
 
+   private SlackMessage appendDiffUrl(SlackMessage message, AbstractPage page) {
+      String link = webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE)
+	  + "/pages/diffpagesbyversion.action?pageId=" + page.getIdAsString()
+	  + "&selectedPageVersions=" + page.getVersion() 
+	  + "&selectedPageVersions=" + page.getPreviousVersion();
+      message = message.link(link, "View Change");
+      return message.text(". ");
+   }
+
+    
    private SlackMessage appendPersonalSpaceUrl(SlackMessage message, User user) {
       if (null == user) {
-         return message.text("unknown user");
+         return message.text("unknown user. ");
       }
-      return message.link(webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE) + "/"
+      message = message.link(webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE) + "/"
             + personalInformationManager.getOrCreatePersonalInformation(user).getUrlPath(), user.getFullName());
+      return message.text(". ");
    }
 
    private SlackMessage appendPageLink(SlackMessage message, AbstractPage page) {
