@@ -18,6 +18,7 @@ import com.atlassian.confluence.event.events.content.ContentEvent;
 import com.atlassian.confluence.event.events.content.blogpost.BlogPostCreateEvent;
 import com.atlassian.confluence.event.events.content.page.PageCreateEvent;
 import com.atlassian.confluence.event.events.content.page.PageUpdateEvent;
+import com.atlassian.confluence.event.events.content.comment.CommentCreateEvent;
 import com.atlassian.confluence.pages.AbstractPage;
 import com.atlassian.confluence.pages.TinyUrl;
 import com.atlassian.confluence.user.ConfluenceUser;
@@ -46,25 +47,51 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
 
    @EventListener
    public void blogPostCreateEvent(BlogPostCreateEvent event) {
-      sendMessages(event, event.getBlogPost(), "new blog post");
+      AbstractPage page = event.getBlogPost();
+      SlackMessage message = getBaseMessage(page, "new blog post");
+      message.text("- Excerpt: ");
+      message.text(page.getExcerpt());
+      sendMessages(event, event.getBlogPost(), message);
    }
 
    @EventListener
    public void pageCreateEvent(PageCreateEvent event) {
-      sendMessages(event, event.getPage(), "new page created");
+      AbstractPage page = event.getPage();
+      SlackMessage message = getBaseMessage(page, "new page created");
+      message.text("- Excerpt: ");
+      message.text(page.getExcerpt());
+      sendMessages(event, page, message);
    }
 
    @EventListener
    public void pageUpdateEvent(PageUpdateEvent event) {
-      sendMessages(event, event.getPage(), "page updated");
+      AbstractPage page = event.getPage();
+      SlackMessage message = getBaseMessage(page, "page updated");
+      if (page.isVersionCommentAvailable())
+         message = message.text(" - Change comment: \"" + page.getVersionComment() + "\" - ");
+      String link = webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE)
+	  + "/pages/diffpagesbyversion.action?pageId=" + page.getIdAsString()
+	  + "&selectedPageVersions=" + page.getVersion() 
+	  + "&selectedPageVersions=" + page.getPreviousVersion();
+      message = message.link(link, "View Change");
+      message = message.text(". ");
+      sendMessages(event, page, message);
    }
 
-   private void sendMessages(ContentEvent event, AbstractPage page, String action) {
+   @EventListener
+   public void commentCreateEvent(CommentCreateEvent event) {
+      AbstractPage page = (AbstractPage)(event.getComment().getContainer());
+      SlackMessage message = getBaseMessage(page, "comment created");
+      message.text(" - Comment: ");
+      message.text(event.getComment().getBodyAsStringWithoutMarkup());
+      sendMessages(event, page, message);
+   }
+
+   private void sendMessages(ContentEvent event, AbstractPage page, SlackMessage message) {
       if (event.isSuppressNotifications()) {
          LOGGER.info("Suppressing notification for {}.", page.getTitle());
          return;
       }
-      SlackMessage message = getMessage(page, action);
       for (String channel : getChannels(page)) {
          sendMessage(channel, message);
       }
@@ -78,16 +105,12 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
       return Arrays.asList(spaceChannels.split(","));
    }
 
-   private SlackMessage getMessage(AbstractPage page, String action) {
+   private SlackMessage getBaseMessage(AbstractPage page, String action) {
       ConfluenceUser user = page.getLastModifier() != null ? page.getLastModifier() : page.getCreator();
       SlackMessage message = new SlackMessage();
       message = appendPageLink(message, page);
       message = message.text(" - " + action + " by ");
       message = appendPersonalSpaceUrl(message, user);
-      if (page.isVersionCommentAvailable())
-	  message = message.text(" - Change comment: \"" + page.getVersionComment() + "\" - ");
-      if (action.equals("page updated")) // I'll burn in hell for this
-	  message = appendDiffUrl(message, page);
       return message;
    }
 
@@ -102,16 +125,6 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
       }
    }
 
-   private SlackMessage appendDiffUrl(SlackMessage message, AbstractPage page) {
-      String link = webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE)
-	  + "/pages/diffpagesbyversion.action?pageId=" + page.getIdAsString()
-	  + "&selectedPageVersions=" + page.getVersion() 
-	  + "&selectedPageVersions=" + page.getPreviousVersion();
-      message = message.link(link, "View Change");
-      return message.text(". ");
-   }
-
-    
    private SlackMessage appendPersonalSpaceUrl(SlackMessage message, User user) {
       if (null == user) {
          return message.text("unknown user. ");
