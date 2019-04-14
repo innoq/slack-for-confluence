@@ -1,33 +1,37 @@
 package com.flaregames.slack.components;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import com.atlassian.confluence.event.events.content.ContentEvent;
+import com.atlassian.confluence.event.events.content.blogpost.BlogPostCreateEvent;
+import com.atlassian.confluence.event.events.content.comment.CommentCreateEvent;
+import com.atlassian.confluence.event.events.content.page.PageCreateEvent;
+import com.atlassian.confluence.event.events.content.page.PageUpdateEvent;
+import com.atlassian.confluence.pages.AbstractPage;
+import com.atlassian.confluence.pages.TinyUrl;
+import com.atlassian.confluence.security.Permission;
+import com.atlassian.confluence.security.PermissionManager;
+import com.atlassian.confluence.user.ConfluenceUser;
+import com.atlassian.confluence.user.PersonalInformationManager;
+import com.atlassian.confluence.user.UserAccessor;
+import com.atlassian.event.api.EventListener;
+import com.atlassian.event.api.EventPublisher;
+import com.atlassian.plugin.webresource.UrlMode;
+import com.atlassian.plugin.webresource.WebResourceUrlProvider;
+import com.atlassian.user.EntityException;
+import com.atlassian.user.User;
+import com.atlassian.user.search.query.UserNameTermQuery;
 import in.ashwanthkumar.slack.webhook.Slack;
 import in.ashwanthkumar.slack.webhook.SlackMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
-
-import com.atlassian.confluence.event.events.content.ContentEvent;
-import com.atlassian.confluence.event.events.content.blogpost.BlogPostCreateEvent;
-import com.atlassian.confluence.event.events.content.page.PageCreateEvent;
-import com.atlassian.confluence.event.events.content.page.PageUpdateEvent;
-import com.atlassian.confluence.event.events.content.comment.CommentCreateEvent;
-import com.atlassian.confluence.pages.AbstractPage;
-import com.atlassian.confluence.pages.TinyUrl;
-import com.atlassian.confluence.user.ConfluenceUser;
-import com.atlassian.confluence.user.PersonalInformationManager;
-import com.atlassian.event.api.EventListener;
-import com.atlassian.event.api.EventPublisher;
-import com.atlassian.plugin.webresource.UrlMode;
-import com.atlassian.plugin.webresource.WebResourceUrlProvider;
-import com.atlassian.user.User;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class AnnotatedListener implements DisposableBean, InitializingBean {
    private static final Logger              LOGGER = LoggerFactory.getLogger(AnnotatedListener.class);
@@ -36,13 +40,18 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
    private final EventPublisher             eventPublisher;
    private final ConfigurationManager       configurationManager;
    private final PersonalInformationManager personalInformationManager;
+   private final PermissionManager permissionManager;
+
+   private final UserAccessor userAccessor;
 
    public AnnotatedListener(EventPublisher eventPublisher, ConfigurationManager configurationManager,
-         PersonalInformationManager personalInformationManager, WebResourceUrlProvider webResourceUrlProvider) {
+                            PersonalInformationManager personalInformationManager, WebResourceUrlProvider webResourceUrlProvider, PermissionManager permissionManager, UserAccessor userAccessor) {
       this.eventPublisher = checkNotNull(eventPublisher);
       this.configurationManager = checkNotNull(configurationManager);
       this.personalInformationManager = checkNotNull(personalInformationManager);
       this.webResourceUrlProvider = checkNotNull(webResourceUrlProvider);
+      this.permissionManager = permissionManager;
+      this.userAccessor = userAccessor;
    }
 
    @EventListener
@@ -71,7 +80,7 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
          message = message.text(" - Change comment: \"" + page.getVersionComment() + "\" - ");
       String link = webResourceUrlProvider.getBaseUrl(UrlMode.ABSOLUTE)
 	  + "/pages/diffpagesbyversion.action?pageId=" + page.getIdAsString()
-	  + "&selectedPageVersions=" + page.getVersion() 
+	  + "&selectedPageVersions=" + page.getVersion()
 	  + "&selectedPageVersions=" + page.getPreviousVersion();
       message = message.link(link, "View Change");
       message = message.text(". ");
@@ -85,10 +94,21 @@ public class AnnotatedListener implements DisposableBean, InitializingBean {
       message.text(" - Comment: ");
       message.text(event.getComment().getBodyAsStringWithoutMarkup());
       sendMessages(event, page, message);
+
+   }
+
+   private boolean isAllowedForSlack(Object entity) {
+      String username = configurationManager.getSlackUser();
+      ConfluenceUser user = userAccessor.getUserByName(username);
+      if (user == null ) {
+         LOGGER.warn("Could not find user '{}' configured for slack-for-confluence!", username);
+         return false;
+      }
+      return permissionManager.hasPermissionNoExemptions(user, Permission.VIEW, entity);
    }
 
    private void sendMessages(ContentEvent event, AbstractPage page, SlackMessage message) {
-      if (event.isSuppressNotifications()) {
+      if (event.isSuppressNotifications() || !isAllowedForSlack(page))  {
          LOGGER.info("Suppressing notification for {}.", page.getTitle());
          return;
       }

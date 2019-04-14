@@ -1,7 +1,8 @@
 package com.flaregames.slack.components;
 
 public enum ConfigurationOption {
-   WEBHOOK_URL("webhook.url"), CHANNELS("channels");
+   WEBHOOK_URL("webhook.url"), CHANNELS("channels"), SLACK_USER("slack.user");
+
 
    private String suffix;
 

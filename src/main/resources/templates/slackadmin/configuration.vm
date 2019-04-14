@@ -38,6 +38,15 @@
         <input id="slackWebhookUrl" class="text" name="slackWebhookUrl" value="$!action.slackWebhookUrl"/>
     </div>
 
+    <p>
+        Confluence will only send message if the given user is allowed to view the resource.
+    </p>
+
+    <div class="field-group">
+        <label for="slackUser">Confluence User for Slack<span class="aui-icon icon-required"></span><span class="content"> required</span></label>
+        <input id="slackUser" class="text" name="slackUser" value="$!action.slackUser"/>
+    </div>
+
     <div class="buttons-container">
         <div class="buttons">
             <input class="button submit" type="submit" value="Save"/>

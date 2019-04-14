@@ -32,6 +32,11 @@ public class ViewConfigurationAction extends ConfluenceActionSupport {
       return configurationManager.getWebhookUrl();
    }
 
+
+   public String getSlackUser() {
+      return configurationManager.getSlackUser();
+   }
+
    @Override
    public String execute() throws Exception {
       return Action.SUCCESS;

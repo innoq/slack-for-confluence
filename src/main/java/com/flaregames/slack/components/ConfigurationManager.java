@@ -20,6 +20,14 @@ public class ConfigurationManager {
       setGlobalValue(ConfigurationOption.WEBHOOK_URL, webhookUrl);
    }
 
+
+   public String getSlackUser() {
+      return getGlobalValue(ConfigurationOption.SLACK_USER);
+   };
+
+   public void setSlackUser(String slackUser) {
+      setGlobalValue(ConfigurationOption.SLACK_USER, slackUser);
+   }
    private String getGlobalValue(ConfigurationOption option) {
       return getBandanaValue(GLOBAL_CONTEXT, option);
    }

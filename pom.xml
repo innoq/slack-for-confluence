@@ -37,7 +37,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Version 1.0.2 is required from dependencies but not provided in the repos, just using 1.1 so Eclipse can resolve 
+        <!-- Version 1.0.2 is required from dependencies but not provided in the repos, just using 1.1 so Eclipse can resolve
             it -->
         <dependency>
             <groupId>javax.activation</groupId>
@@ -68,21 +68,20 @@
 
     <build>
         <plugins>
+
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
-                <artifactId>maven-confluence-plugin</artifactId>
+                <artifactId>confluence-maven-plugin</artifactId>
                 <version>${amps.version}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <productVersion>${confluence.version}</productVersion>
                     <productDataVersion>${confluence.data.version}</productDataVersion>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <!--<enableQuickReload>true</enableQuickReload>-->
+                    <allowGoogleTracking>false</allowGoogleTracking>
+                    <!-- See here for an explanation of default instructions: -->
+                    <!-- https://developer.atlassian.com/docs/advanced-topics/configuration-of-instructions-in-atlassian-plugins -->
+
                 </configuration>
             </plugin>
         </plugins>
@@ -91,7 +90,8 @@
     <properties>
         <confluence.version>5.6</confluence.version>
         <confluence.data.version>5.6</confluence.data.version>
-        <amps.version>4.2.10</amps.version>
+
+        <amps.version>8.0.0</amps.version>
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
     </properties>
 
