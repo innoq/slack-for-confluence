@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.flaregames</groupId>
     <artifactId>slack-for-confluence</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1-SNAPSHOT</version>
 
     <organization>
         <name>flaregames GmbH</name>
@@ -88,8 +88,8 @@
     </build>
 
     <properties>
-        <confluence.version>5.6</confluence.version>
-        <confluence.data.version>5.6</confluence.data.version>
+        <confluence.version>6.15.6</confluence.version>
+        <confluence.data.version>6.15.6</confluence.data.version>
 
         <amps.version>8.0.0</amps.version>
         <plugin.testrunner.version>1.2.3</plugin.testrunner.version>
